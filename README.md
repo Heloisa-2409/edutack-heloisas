@@ -9,10 +9,10 @@ Projeto da disciplina Innovation Lab – Faculdade Impacta
 
 ---
 
-## Tecnologias Utilizadas.
+## Tecnologias Utilizadas
 
-Git & GitHub
-VS Code
-Node.js
-OpenSpec
-Xano
+- Git & GitHub
+- VS Code
+- Node.js
+- OpenSpec
+- Xano
