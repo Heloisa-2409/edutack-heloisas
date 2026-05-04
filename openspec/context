@@ -1,0 +1,17 @@
+# Contexto do Sistema
+
+## Visão Geral
+Este projeto é um backend de gestão acadêmica construído utilizando XanoScript e Desenvolvimento Orientado a Especificações (Spec-Driven Development).
+
+## Objetivo
+Permitir que os usuários gerenciem disciplinas acadêmicas e dados relacionados.
+
+## Entidades Principais
+* Usuários (autenticação nativa do Xano)
+* Disciplinas (matérias acadêmicas pertencentes aos usuários)
+
+## Relacionamentos
+* Cada disciplina pertence a um único usuário.
+
+## Evolução Esperada
+Posteriormente, o sistema incluirá APIs, tarefas de automação e integrações.
