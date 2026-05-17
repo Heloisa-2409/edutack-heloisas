@@ -1,28 +1,28 @@
-# feature-notas-atividades Proposal
+# Proposta feature-subjects-crud
 
-## Why
-- The current EduTrack AI backend has no persistent model for student grades or a dedicated endpoint for teachers to submit grades.
-- This feature SHALL enable a professor to record a grade for a student on a specific academic activity while keeping the implementation scoped to grade creation only.
-- The design MUST preserve the existing multi-tenant pattern by scoping writes to the authenticated user and their account.
+## Por quê (Why)
+- O backend do EduTrack AI precisa de uma API CRUD segura para `subjects` que mantenha os dados de cada usuário isolados.
+- Esta funcionalidade DEVE impedir que usuários leiam, atualizem ou excluam `subjects` que não lhes pertencem.
+- O design DEVE preservar o isolamento de tenants (multi-tenant) ao impor verificações de propriedade tanto por `user_id` quanto por `account_id`.
 
-## What Changes
-- Add a new database table `activity_grades` to store grade submissions.
-  - Fields: `id`, `created_at`, `updated_at`, `user_id`, `account_id`, `student_id`, `subject_id?`, `activity_id?`, `activity_name`, `grade`, `comments?`.
-  - `user_id` SHALL represent the authenticated professor who created the grade record.
-  - `student_id` SHALL reference the graded student user.
-  - `subject_id` SHALL be optional to relate the grade to an existing `subjects` record.
-  - `activity_id` SHALL be an optional numeric identifier for a specific activity when available.
-  - `activity_name` SHALL capture the specific activity description.
-  - `grade` SHALL be validated as a score within an acceptable academic range (e.g., 0-100).
-- Add a new API endpoint `POST /activity_grades`.
-  - Authenticated endpoint (`auth = "user"`).
-  - Input parameters: `student_id`, `activity_name`, `grade`, optional `subject_id`, optional `activity_id`, optional `comments`.
-  - The endpoint SHALL create a new `activity_grades` record scoped to `$auth.id` and `$auth.account_id`.
-  - No list/query or GET endpoints SHALL be added, because the user requested only the ability to launch grades.
-- Keep the scope strictly limited to the explicit requirement of grade submission.
+## O que muda (What Changes)
+- Adicionar ou verificar os endpoints RESTful para o recurso `subjects`:
+  - `GET /subjects`
+  - `POST /subjects`
+  - `GET /subjects/{subjects_id}`
+  - `PATCH /subjects/{subjects_id}`
+  - `DELETE /subjects/{subjects_id}`
+- Garantir que cada endpoint use `auth = "user"`.
+- Implementar a imposição de propriedade em cada operação:
+  - `GET /subjects` DEVE filtrar por `$auth.id` e `$auth.account_id`.
+  - `POST /subjects` DEVE criar registros com `user_id = $auth.id` e `account_id = $auth.account_id`.
+  - Os endpoints `{subjects_id}` DEVEM verificar se o registro existe e pertence ao usuário autenticado antes de retorná-lo, atualizá-lo ou excluí-lo.
+- Retornar tipos de erro claros para registros não autorizados ou ausentes:
+  - `notfound` quando o registro não existe.
+  - `accessdenied` quando o registro existe, mas pertence a outro usuário ou conta.
 
-## Impact
-- Enables Streamlit frontend to submit student grades for specific activities.
-- Maintains tenant isolation and user ownership using `account_id` and `user_id`.
-- Leaves room for future expansion with activity entities or teacher-specific permission checks.
-- Avoids adding extra read/list endpoints that are outside the requested scope.
+## Impacto (Impact)
+- Fornece uma interface CRUD completa e com escopo definido para o gerenciamento de disciplinas.
+- Protege os dados do usuário por meio de verificações de propriedade multi-tenant.
+- Permite que os fluxos de trabalho do frontend listem, criem, atualizem e removam disciplinas com segurança.
+- Mantém a implementação estritamente no escopo da funcionalidade solicitada, sem adicionar endpoints não relacionados ou padrões de acesso mais amplos.

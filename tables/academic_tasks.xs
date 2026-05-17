@@ -1,39 +1,34 @@
-table "academic_tasks" {
+table academic_tasks {
   auth = false
-  schema {
-    int id {
-      description = "Unique identifier for the academic task"
-    }
 
+  schema {
+    // Unique identifier for the academic task
+    int id
+  
+    // ID of the user who owns the task
     int user_id {
       table = "user"
-      description = "ID of the user who owns the task"
     }
-
+  
+    // ID of the subject this task belongs to
     int subject_id {
       table = "subjects"
-      description = "ID of the subject this task belongs to"
     }
-
-    text title filters=trim {
-      description = "Title of the academic task"
-    }
-
-    text description? filters=trim {
-      description = "Optional description of the task"
-    }
-
-    date due_date {
-      description = "Due date for the task"
-    }
-
-    text status?="pending" {
-      description = "Status of the task (e.g., pending, completed)"
-    }
-
-    timestamp created_at?=now {
-      description = "Timestamp when the task was created"
-    }
+  
+    // Title of the academic task
+    text title filters=trim
+  
+    // Optional description of the task
+    text description? filters=trim
+  
+    // Due date for the task
+    date due_date
+  
+    // Status of the task (e.g., pending, completed)
+    text status?=pending
+  
+    // Timestamp when the task was created
+    timestamp created_at?=now
   }
 
   index = [
