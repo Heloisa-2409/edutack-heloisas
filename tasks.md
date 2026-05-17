@@ -1,49 +1,36 @@
-# feature-notas-atividades — Plano de Implementação
+# subjects-crud — Plano de Implementação
 
 ## 📋 Resumo
-Funcionalidade para permitir que professores lancem notas para alunos em atividades específicas.
+Criar e validar endpoints CRUD para a tabela `subjects`, garantindo que cada usuário só acesse os seus próprios registros.
 
-**Escopo:** APENAS o que foi solicitado:
-- ✅ Criar tabela `activity_grades`
-- ✅ Criar API POST para lançar nota
-
-**Excluídos (não solicitados):**
-- ❌ APIs de listagem/consulta (GET, PATCH, DELETE)
-- ❌ Funções reutilizáveis
-- ❌ UI Streamlit
+**Escopo:**
+- ✅ Revisar ou criar os endpoints RESTful para `subjects`
+- ✅ Garantir autorização por `user_id` e `account_id`
+- ✅ Manter apenas dados do usuário autenticado
 
 ---
 
 ## 📌 Tarefas
 
-### 1. Tabela `activity_grades`
-- [ ] Usar **Xano Table Designer** para criar tabela em `tables/activity_grades.xs`
-- [ ] Campos obrigatórios: `id`, `created_at`, `updated_at`, `user_id`, `account_id`, `student_id`, `activity_name`, `grade`
-- [ ] Campos opcionais: `subject_id`, `activity_id`, `comments`
-- [ ] Validação: `grade` deve aceitar valores numéricos (0-100)
-- [ ] Relacionamento: `subject_id` referencia tabela `subjects` (opcional)
+### 1. Revisar endpoints `subjects`
+- [x] Verificar `apis/subjects/subjects_GET.xs` e `apis/subjects/subjects_POST.xs`
+- [x] Verificar `apis/subjects/subjects_{subjects_id}_GET.xs`, `apis/subjects/subjects_{subjects_id}_PATCH.xs`, e `apis/subjects/subjects_{subjects_id}_DELETE.xs`
+- [x] Assegurar que `auth = "user"` está habilitado em todos os endpoints
 
-### 2. API POST `/activity_grades`
-- [ ] Usar **Xano API Query Writer** para criar em `apis/activity_grades/`
-- [ ] Autenticação: `auth = "user"`
-- [ ] Input: `student_id`, `activity_name`, `grade`, `subject_id?`, `activity_id?`, `comments?`
-- [ ] Ação: Inserir registro com `user_id = $auth.id` e `account_id = $auth.account_id`
-- [ ] Resposta: Retornar registro criado
+### 2. Garantir isolamento por usuário e tenant
+- [x] Confirmar que o `GET /subjects` filtra por `user_id == $auth.id` e `account_id == $auth.account_id`
+- [x] Confirmar que `POST /subjects` grava `user_id = $auth.id` e `account_id = $auth.account_id`
+- [x] Confirmar que os endpoints por ID (`GET`, `PATCH`, `DELETE`) validam tanto a existência do registro quanto a propriedade (`user_id` e `account_id`) antes de qualquer operação.
 
----
-
-## 🔄 Sequência de Implementação
-
-1. **Primeiro:** Criar tabela `activity_grades` (dependência para API)
-2. **Depois:** Criar API `POST /activity_grades`
-3. **Verificação:** Confirmar que ambos os componentes sincronizam com Xano manualmente
+### 3. Ajustes e correções
+- [x] Corrigir qualquer endpoint que não faça validação de ownership.
+- [x] Incluir mensagens de erro claras para `notfound` (registro não existe) e `accessdenied` (registro existe, mas pertence a outro usuário).
 
 ---
 
 ## ✅ Definição de Pronto
 
-- [ ] Tabela criada com sucesso em Xano
-- [ ] API aceita requisições POST com os inputs corretos
-- [ ] Registro é inserido com `user_id` do professor autenticado
-- [ ] Registros são isolados por `account_id` (multi-tenant)
-- [ ] Proposta validada contra regras OpenSpec (estrutura: ## Why, ## What Changes, ## Impact)
+- [x] CRUD completo para `subjects` disponível.
+- [x] Usuário autenticado só acessa seus próprios subjects.
+- [x] `account_id` protege o isolamento multi-tenant.
+- [x] Erros retornam `notfound` ou `accessdenied` conforme apropriado.
