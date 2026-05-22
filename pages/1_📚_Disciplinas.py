@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+import pandas as pd
 from dotenv import load_dotenv
 
 # Carregar variáveis de ambiente
@@ -127,6 +128,7 @@ with tab_novo:
             nome = st.text_input("Nome da Disciplina *", placeholder="Ex: Cálculo I")
             professor = st.text_input("Nome do Professor *", placeholder="Ex: Prof. Silva")
         with col_b:
+            semestre = st.text_input("Semestre/Período", placeholder="Ex: 2024.1")
             dia_semana = st.selectbox("Dia da Aula", ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"])
             carga_horaria = st.number_input(
                 "Carga Horária (h/semana)",
@@ -157,7 +159,8 @@ with tab_novo:
                         "name": nome,
                         "professor": professor,
                         "day_of_week": dia_semana,
-                        "carga_horaria": int(carga_horaria)
+                        "carga_horaria": int(carga_horaria),
+                        "semester": semestre
                     }
                     result = make_xano_request('/subjects', method='POST', data=disciplina_data)
                     if result:
@@ -222,6 +225,24 @@ with tab_lista:
     c2.metric("⚠️ Com Tarefas em Atraso", len(overdue_subject_ids))
     c3.metric("🔍 Resultados Filtrados", len(filtered_subjects))
 
+    # --- Botão de Exportação ---
+    if filtered_subjects:
+        st.markdown("---")
+        # Convert to DataFrame for easier CSV export
+        df_subjects = pd.DataFrame(filtered_subjects)
+        # Select and rename columns for clarity
+        df_export = df_subjects[['name', 'professor', 'semester', 'day_of_week', 'carga_horaria']]
+        df_export.columns = ['Nome', 'Professor', 'Semestre', 'Dia da Semana', 'Carga Horária (h/sem)']
+        
+        csv = df_export.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+           label="📥 Exportar Disciplinas para CSV",
+           data=csv,
+           file_name='disciplinas_edutrack.csv',
+           mime='text/csv'
+        )
+
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     # ── Lista de Disciplinas ─────────────────────────────────────────────────
@@ -245,7 +266,7 @@ with tab_lista:
                         st.markdown(f"**{name_display}** <span class='badge badge-red'>⚠️ Atrasada</span>", unsafe_allow_html=True)
                     else:
                         st.markdown(f"**{name_display}**")
-                    st.caption(f"👨‍🏫 {subject.get('professor', 'N/A')}")
+                    st.caption(f"👨‍🏫 {subject.get('professor', 'N/A')}  •  🗓️ {subject.get('semester', 'N/A')}")
 
                 with col2:
                     st.write(f"📅 {subject.get('day_of_week', '—')}")
@@ -277,6 +298,7 @@ with tab_lista:
                             with ec1:
                                 new_name = st.text_input("Nome", value=subject.get('name', ''))
                                 new_professor = st.text_input("Professor", value=subject.get('professor', ''))
+                                new_semester = st.text_input("Semestre/Período", value=subject.get('semester', ''))
                             with ec2:
                                 dias = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
                                 try:
@@ -303,7 +325,8 @@ with tab_lista:
                                         "name": new_name,
                                         "professor": new_professor,
                                         "day_of_week": new_day,
-                                        "carga_horaria": int(new_carga)
+                                        "carga_horaria": int(new_carga),
+                                        "semester": new_semester
                                     }
                                     result = make_xano_request(f"/subjects/{subject_id}", method='PATCH', data=update_data)
                                     if result:

@@ -268,6 +268,12 @@ in_progress    = [t for t in tasks if t.get('status') == 'in_progress']
 completed_tasks = [t for t in tasks if t.get('status') == 'completed']
 completion_rate = (len(completed_tasks) / total_tasks * 100) if total_tasks > 0 else 0
 
+PRIORITY_LABELS = {
+    "low":    ("⬇️", "Baixa"),
+    "medium": ("⏺️", "Média"),
+    "high":   ("⬆️", "Alta"),
+}
+
 def safe_due(t):
     try:
         return datetime.fromisoformat(t['due_date'].split('T')[0])
@@ -332,6 +338,8 @@ with col_next:
             due = safe_due(t)
             days_left = (due - now).days if due else None
             subj_name = subjects_map.get(t.get('subject_id'), 'N/A')
+            priority = t.get('priority', 'medium')
+            p_icon, _ = PRIORITY_LABELS.get(priority, ("⏺️", "Média"))
 
             is_today = days_left == 0
             card_cls = "today" if is_today else "task-card"
@@ -345,7 +353,7 @@ with col_next:
 
             st.markdown(f"""
             <div class="task-card {'today' if is_today else ''}">
-                <div class="task-title">{t.get('title', 'Sem título')}</div>
+                <div class="task-title">{p_icon} {t.get('title', 'Sem título')}</div>
                 <div class="task-meta">📚 {subj_name} &nbsp;·&nbsp; {days_txt} &nbsp;·&nbsp; {due.strftime('%d/%m/%Y') if due else ''}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -359,10 +367,12 @@ if overdue_tasks:
         due = safe_due(t)
         days_ago = (now - due).days if due else 0
         subj_name = subjects_map.get(t.get('subject_id'), 'N/A')
+        priority = t.get('priority', 'medium')
+        p_icon, _ = PRIORITY_LABELS.get(priority, ("⏺️", "Média"))
 
         st.markdown(f"""
         <div class="task-card overdue">
-            <div class="task-title">🔴 {t.get('title', 'Sem título')}</div>
+            <div class="task-title">🔴 {p_icon} {t.get('title', 'Sem título')}</div>
             <div class="task-meta">📚 {subj_name} &nbsp;·&nbsp; ⚠️ Atrasada há {days_ago} dia(s) &nbsp;·&nbsp; Prazo: {due.strftime('%d/%m/%Y') if due else '—'}</div>
         </div>
         """, unsafe_allow_html=True)

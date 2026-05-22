@@ -31,17 +31,15 @@ Dashboard
 ++ Criar uma tela inicial com visão geral do sistema logo após o login, exibindo:
 ++ Total de disciplinas ativas
 ++ Total de tarefas pendentes e em atraso
-++ As próximas tarefas com prazo mais próximo
++ As próximas tarefas com prazo mais próximo
 ++ Indicador de progresso geral (percentual de tarefas concluídas)
 
 Relatórios e Progresso
--- Criar uma tela de relatórios com o histórico de tarefas por período e progresso por disciplina.
--- Permitir que o usuário exporte seus dados (disciplinas e tarefas) em formato CSV ou PDF.
++ Criar uma tela de relatórios com o histórico de tarefas por período e progresso por disciplina.
++ Exibir o progresso de cada disciplina com base nas tarefas concluídas.
++ Permitir que o usuário exporte seus dados (disciplinas e tarefas) em formato CSV ou PDF.
 
 Evolução das Disciplinas e Tarefas
--- Permitir associar um semestre/período a cada disciplina para melhor organização.
--- Adicionar campo de prioridade nas tarefas (Baixa, Média, Alta).
--- Exibir o progresso de cada disciplina com base nas tarefas concluídas.
 -- Permitir arquivar disciplinas concluídas sem excluí-las.
 
 Design e Experiência do Usuário

@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -87,6 +88,12 @@ STATUS_LABELS = {
     "completed":   ("🟢", "Concluída",    "status-done"),
 }
 
+PRIORITY_LABELS = {
+    "low":    ("⬇️", "Baixa"),
+    "medium": ("⏺️", "Média"),
+    "high":   ("⬆️", "Alta"),
+}
+
 def format_status(status: str) -> str:
     icon, label, css = STATUS_LABELS.get(status, ("⚪", status, "status-pending"))
     return f'<span class="{css}">{icon} {label}</span>'
@@ -134,6 +141,12 @@ with tab_novo:
             with col_b:
                 description = st.text_area("Descrição", placeholder="Descreva os detalhes da tarefa...")
                 due_date = st.date_input("Prazo de Entrega *", min_value=datetime.today().date())
+                priority_new = st.selectbox(
+                    "Prioridade",
+                    ["low", "medium", "high"],
+                    index=1,
+                    format_func=lambda x: PRIORITY_LABELS[x][1]
+                )
 
             submitted = st.form_submit_button("✅ Criar Tarefa", use_container_width=True)
 
@@ -144,7 +157,8 @@ with tab_novo:
                         "description": description,
                         "subject_id": subjects_options[subject_name_sel],
                         "due_date": due_date.isoformat(),
-                        "status": status_new
+                        "status": status_new,
+                        "priority": priority_new
                     }
                     result = make_xano_request('/academic_tasks', method='POST', data=task_data)
                     if result:
@@ -193,6 +207,34 @@ with tab_lista:
     mc2.metric("✅ Concluídas", done_c)
     mc3.metric("⏳ Pendentes", pend_c)
     mc4.metric("⚠️ Atrasadas", over_c)
+
+    # --- Botão de Exportação ---
+    if filtered:
+        st.markdown("---")
+        df_tasks = pd.DataFrame(filtered)
+        
+        # Add subject name and format date
+        df_tasks['disciplina'] = df_tasks['subject_id'].map(subjects_map).fillna('N/A')
+        # Handle potential errors in date conversion
+        df_tasks['prazo'] = pd.to_datetime(df_tasks['due_date'], errors='coerce').dt.strftime('%d/%m/%Y')
+        
+        # Map status and priority to readable labels
+        df_tasks['status_label'] = df_tasks['status'].map(lambda x: STATUS_LABELS.get(x, ('', x))[1])
+        df_tasks['priority_label'] = df_tasks['priority'].map(lambda x: PRIORITY_LABELS.get(x, ('', x))[1])
+
+        # Select and rename columns
+        df_export = df_tasks[['title', 'disciplina', 'prazo', 'status_label', 'priority_label', 'description']]
+        df_export.columns = ['Título', 'Disciplina', 'Prazo', 'Status', 'Prioridade', 'Descrição']
+
+        csv = df_export.to_csv(index=False).encode('utf-8')
+
+        st.download_button(
+           label="📥 Exportar Tarefas para CSV",
+           data=csv,
+           file_name='tarefas_edutrack.csv',
+           mime='text/csv'
+        )
+
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     if not filtered:
@@ -247,6 +289,10 @@ with tab_lista:
                     with c_info:
                         subj_name = subjects_map.get(task.get('subject_id'), "Desconhecida")
                         st.markdown(f"**📚 Disciplina:** {subj_name}")
+
+                        task_priority = task.get('priority', 'medium')
+                        p_icon, p_label = PRIORITY_LABELS.get(task_priority, ("⏺️", "Média"))
+                        st.markdown(f"**Prioridade:** {p_icon} {p_label}")
 
                         if task_due:
                             try:
@@ -314,6 +360,12 @@ with tab_lista:
                                 except Exception:
                                     cur_due = datetime.today().date()
                                 new_due = st.date_input("Prazo", value=cur_due)
+                                new_priority = st.selectbox(
+                                    "Prioridade",
+                                    ["low", "medium", "high"],
+                                    index=["low", "medium", "high"].index(task.get('priority', 'medium')),
+                                    format_func=lambda x: PRIORITY_LABELS[x][1]
+                                )
 
                             es1, es2 = st.columns(2)
                             save_e = es1.form_submit_button("💾 Salvar Alterações", use_container_width=True)
@@ -325,7 +377,8 @@ with tab_lista:
                                     "description": new_desc,
                                     "subject_id": subjects_options.get(new_subj, task.get('subject_id')),
                                     "due_date": new_due.isoformat(),
-                                    "status": new_status
+                                    "status": new_status,
+                                    "priority": new_priority
                                 }
                                 result = make_xano_request(f'/academic_tasks/{task_id}', method='PATCH', data=update_data)
                                 if result:
