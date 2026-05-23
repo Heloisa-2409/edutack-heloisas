@@ -37,7 +37,8 @@ Dashboard
 Relatórios e Progresso
 + Criar uma tela de relatórios com o histórico de tarefas por período e progresso por disciplina.
 + Exibir o progresso de cada disciplina com base nas tarefas concluídas.
-+ Permitir que o usuário exporte seus dados (disciplinas e tarefas) em formato CSV ou PDF.
++ Permitir que o usuário exporte seus dados (disciplinas e tarefas) em formato CSV.
+-- Permitir que o usuário exporte seus dados (disciplinas e tarefas) em formato PDF.
 
 Evolução das Disciplinas e Tarefas
 -- Permitir arquivar disciplinas concluídas sem excluí-las.
