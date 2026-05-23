@@ -136,8 +136,8 @@ for t in tasks:
                 overdue_tasks += 1
             if 0 <= days_left <= 7: # Próximos 7 dias
                 upcoming_tasks.append({**t, 'days_left': days_left})
-        except Exception:
-            pass
+        except (ValueError, TypeError):
+            st.warning(f"A data da tarefa '{t.get('title', 'N/A')}' está em um formato inválido e não pôde ser processada.", icon="⚠️")
 
 # Ordenar tarefas por proximidade
 upcoming_tasks.sort(key=lambda x: x['days_left'])

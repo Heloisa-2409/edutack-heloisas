@@ -59,7 +59,15 @@ if auth_mode == "Entrar (Login)":
                     
                     if response.status_code == 200:
                         data = response.json()
-                        st.session_state['auth_token'] = data.get('authToken')
+                        token = data.get('authToken')
+                        st.session_state['auth_token'] = token
+                        
+                        # Após o login, buscar os dados do usuário
+                        headers = {'Authorization': f'Bearer {token}'}
+                        user_response = requests.get(f"{XANO_WORKSPACE_URL}/auth/me", headers=headers)
+                        if user_response.status_code == 200:
+                            st.session_state['user'] = user_response.json()
+                        
                         st.success("🎉 Login realizado com sucesso!")
                         st.rerun()
                     else:
@@ -108,7 +116,12 @@ else:
                         
                         if response.status_code == 200:
                             data = response.json()
-                            st.session_state['auth_token'] = data.get('authToken')
+                            token = data.get('authToken')
+                            st.session_state['auth_token'] = token
+                            
+                            # Após o cadastro, populamos o 'user' na sessão com os dados do formulário
+                            st.session_state['user'] = { "name": name, "email": email }
+                            
                             st.success("🎉 Conta criada com sucesso! Você está autenticado.")
                             st.rerun()
                         else:

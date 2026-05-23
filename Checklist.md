@@ -42,7 +42,6 @@ Relatórios e Progresso
 
 Evolução das Disciplinas e Tarefas
 -- Permitir arquivar disciplinas concluídas sem excluí-las.
-
 Design e Experiência do Usuário
 ++ Definir uma identidade visual consistente para o app (cores, logo, tipografia).
 ++ Melhorar a tela de login e cadastro com um layout mais atrativo.
