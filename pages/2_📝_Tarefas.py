@@ -1,43 +1,6 @@
 import streamlit as st
-import requests
-import os
 from datetime import datetime
-from dotenv import load_dotenv
-
-# Carregar variáveis de ambiente
-load_dotenv()
-
-# Configurações do Xano
-XANO_WORKSPACE_URL = os.getenv('XANO_WORKSPACE_URL', 'https://x8ki-letl-twmt.xano.io/api')
-
-# Função helper para API
-def make_xano_request(endpoint, method='GET', data=None, headers=None):
-    """Faz uma requisição para a API Xano"""
-    url = f"{XANO_WORKSPACE_URL}{endpoint}"
-
-    default_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {st.session_state.get("auth_token", "")}'
-    }
-
-    if headers:
-        default_headers.update(headers)
-
-    try:
-        if method == 'GET':
-            response = requests.get(url, headers=default_headers)
-        elif method == 'POST':
-            response = requests.post(url, json=data, headers=default_headers)
-        elif method == 'PATCH':
-            response = requests.patch(url, json=data, headers=default_headers)
-        elif method == 'DELETE':
-            response = requests.delete(url, headers=default_headers)
-        else:
-            return None
-
-        return response.json() if response.status_code == 200 else None
-    except:
-        return None
+from utils.api import make_xano_request
 
 st.title("📝 Gerenciamento de Tarefas")
 
@@ -76,8 +39,6 @@ with tab_novo:
                 if result:
                     st.success(f"Tarefa '{title}' criada com sucesso!")
                     st.rerun()
-                else:
-                    st.error("Erro ao criar tarefa. Verifique os dados e tente novamente.")
             else:
                 st.error("Preencha o título e selecione uma disciplina.")
 
@@ -171,5 +132,3 @@ with tab_lista:
             col3.metric("Pendentes", pending_tasks)
         else:
             st.info("Nenhuma tarefa encontrada com os filtros aplicados.")
-    else:
-        st.error("Erro ao carregar tarefas. Verifique sua conexão.")

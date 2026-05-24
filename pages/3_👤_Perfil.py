@@ -1,42 +1,5 @@
 import streamlit as st
-import requests
-import os
-from dotenv import load_dotenv
-
-# Carregar variáveis de ambiente
-load_dotenv()
-
-# Configurações do Xano
-XANO_WORKSPACE_URL = os.getenv('XANO_WORKSPACE_URL', 'https://x8ki-letl-twmt.xano.io/api')
-
-# Função helper para API
-def make_xano_request(endpoint, method='GET', data=None, headers=None):
-    """Faz uma requisição para a API Xano"""
-    url = f"{XANO_WORKSPACE_URL}{endpoint}"
-
-    default_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {st.session_state.get("auth_token", "")}'
-    }
-
-    if headers:
-        default_headers.update(headers)
-
-    try:
-        if method == 'GET':
-            response = requests.get(url, headers=default_headers)
-        elif method == 'POST':
-            response = requests.post(url, json=data, headers=default_headers)
-        elif method == 'PATCH':
-            response = requests.patch(url, json=data, headers=default_headers)
-        elif method == 'DELETE':
-            response = requests.delete(url, headers=default_headers)
-        else:
-            return None
-
-        return response.json() if response.status_code == 200 else None
-    except:
-        return None
+from utils.api import make_xano_request
 
 st.title("👤 Meu Perfil")
 
@@ -129,6 +92,3 @@ if user_data:
 
         if st.button("Salvar Preferências"):
             st.success("Preferências salvas! (Simulação)")
-
-else:
-    st.error("Erro ao carregar dados do perfil. Verifique sua conexão.")
