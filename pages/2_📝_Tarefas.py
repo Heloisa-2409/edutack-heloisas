@@ -165,7 +165,10 @@ with tab_lista:
         
         # Map status and priority to readable labels
         df_tasks['status_label'] = df_tasks['status'].map(lambda x: STATUS_LABELS.get(x, ('', x))[1])
-        df_tasks['priority_label'] = df_tasks['priority'].map(lambda x: PRIORITY_LABELS.get(x, ('', x))[1])
+        if 'priority' in df_tasks.columns:
+            df_tasks['priority_label'] = df_tasks['priority'].map(lambda x: PRIORITY_LABELS.get(x, ('', x))[1])
+        else:
+            df_tasks['priority_label'] = 'N/A'
 
         # Select and rename columns
         df_export = df_tasks[['title', 'disciplina', 'prazo', 'status_label', 'priority_label', 'description']]

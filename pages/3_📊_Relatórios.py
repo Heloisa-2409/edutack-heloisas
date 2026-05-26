@@ -1,11 +1,7 @@
 import streamlit as st
-import requests
 import pandas as pd
 from datetime import datetime, date, timedelta
-from utils.config import XANO_WORKSPACE_URL, XANO_WORKSPACE_URL_IS_DEFAULT, XANO_WORKSPACE_URL_WARNING
-
-if XANO_WORKSPACE_URL_WARNING:
-    st.warning(XANO_WORKSPACE_URL_WARNING)
+from utils.api import make_xano_request
 
 # ── Configuração da página ──────────────────────────────────────────────────
 st.set_page_config(page_title="Relatórios - EduTrack AI", page_icon="📊", layout="wide")
@@ -33,31 +29,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
-# ── Função helper para API ──────────────────────────────────────────────────
-def make_xano_request(endpoint, method='GET', data=None):
-    url = f"{XANO_WORKSPACE_URL}{endpoint}"
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {st.session_state.get("auth_token", "")}'
-    }
-    try:
-        if method == 'GET':
-            response = requests.get(url, headers=headers)
-        else:
-            return None # Relatórios é somente leitura
-
-        if response.status_code == 401:
-            st.session_state.pop('auth_token', None)
-            st.error("⏱️ Sessão expirada. Por favor, faça login novamente.")
-            st.rerun()
-
-        response.raise_for_status()
-        return response.json()
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"❌ Erro de conexão: {e}")
-        return None
 
 # ── Cabeçalho ───────────────────────────────────────────────────────────────
 st.markdown('<h1 class="page-header">📊 Relatórios e Progresso</h1>', unsafe_allow_html=True)
