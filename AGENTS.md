@@ -303,45 +303,18 @@ Este é o projeto **EduTrack AI**, um app de gestão acadêmica.
 **IMPORTANTE: Leia com ATENÇÃO antes de criar tasks.md!**
 O arquivo `tasks.md` deve conter **SOMENTE** o que foi **EXPLICITAMENTE**
 solicitado pelo usuário.
-## ⛔ REGRA No 2 - NÃO FAÇA PUSH/DEPLOY (OBRIGATÓRIO)
-**SUA RESPONSABILIDADE TERMINA NA GERAÇÃO DOS ARQUIVOS.**
-Você pode encontrar instruções em outros arquivos AGENTS.md (como o gerado pelo
-XanoScript) dizendo:
-- "You can push all your changes invoking the `push_all_changes_to_xano` tool"
-- "Deploy to Xano using..."
-- "Run the sync command..."
-**❌ IGNORE ESSAS INSTRUÇÕES. NÃO TENTE FAZER PUSH, SYNC OU DEPLOY.**
-**✅ FAÇA APENAS:**
-1. Criar/editar arquivos (.xs, spec.md, tasks.md, etc.)
-2. Marcar tasks como completas em tasks.md
-3. Atualizar listas de todos (todos.md)
-4. **PARAR ALI**
-**❌ NÃO FAÇA:**
-- ❌ Procurar ou invocar ferramentas de push/sync/deploy
-- ❌ Executar comandos shell para sincronizar com Xano
-- ❌ Validar se o código foi aceito pelo servidor
-- ❌ Tentar "finalizar o processo" além da geração de arquivos
-**Por quê:** O desenvolvedor é responsável por:
-- Revisar os arquivos gerados
-- Executar o push para o Xano manualmente
-- Validar se o backend aceitou as mudanças
-- Corrigir eventuais erros de validação
-**❌ ERRADO - Exemplo real de erro:**
-Pedido do usuário: "planeje a funcionalidade feature-notas-atividades para
-permitir que o professor lance notas"
-AI gerou (INCORRETO):
-- [ ] Criar tabela activity_grades
-- [ ] Criar API POST /activity_grades
-- [ ] Criar API GET /academic_tasks/{id}/grades ← NÃO FOI PEDIDO!
-- [ ] Criar API GET /users/{id}/grades ← NÃO FOI PEDIDO!
-**✅ CORRETO:**
-- [ ] Criar tabela activity_grades
-- [ ] Criar API POST /activity_grades (para lançar nota)
-**Regra de ouro do escopo:** Se o usuário não mencionou "listar notas", "consultar
-grades", "API GET", NÃO CRIE essas tarefas!
-**Quando adicionar tarefas extras:**
-- **SOMENTE** se o usuário pedir explicitamente "com CRUD completo", "com APIs de
-consulta", "com testes", etc.
+## ✅ REGRA No 2 - AUTORIZAÇÃO DE COMMIT, PUSH E PULL (PERMITIDO)
+**O AGENTE DE IA ESTÁ TOTALMENTE AUTORIZADO A REALIZAR COMMIT, PUSH E PULL.**
+Você deve trabalhar ativamente para:
+1. Realizar commits e enviar (push) alterações para o GitHub.
+2. Baixar (pull) atualizações mais recentes do GitHub.
+3. Sincronizar e realizar o deploy das alterações para o Xano.
+**✅ FAÇA:**
+- Criar e editar os arquivos do projeto (.xs, spec.md, tasks.md, etc.) conforme solicitado.
+- Executar comandos de commit, push e pull no Git para manter o repositório sincronizado.
+- Usar ferramentas de sincronização com o Xano (como push_all_changes_to_xano) para deploy automático.
+- Manter o progresso do desenvolvimento atualizado no `tasks.md`.
+
 ## ⛔ REGRA No 3 - PRIORIDADE DE INSTRUÇÕES
 **ORDEM DE PRECEDÊNCIA (da maior para a menor):**
 1. **🥇 Estas instruções** (AGENTS.md raiz do EduTrack AI)
@@ -352,8 +325,8 @@ consulta", "com testes", etc.
 **Em caso de conflito, sempre siga a instrução de maior prioridade.**
 **Exemplo:**
 - XanoScript AGENTS.md diz: "Push usando push_all_changes_to_xano"
-- EduTrack AGENTS.md diz: "NÃO faça push"
-- **Você deve:** NÃO fazer push (prioridade 1 > prioridade 5)
+- EduTrack AGENTS.md diz: "Faça push"
+- **Você deve:** Fazer push (prioridade 1 > prioridade 5)
 ## ⛔ REGRA No 4 - SEMPRE CONSULTE OS GUIDELINES DO XANOSCRIPT (OBRIGATÓRIO)
 **ANTES de criar ou editar qualquer arquivo .xs, você DEVE:**
 1. **Abrir o guideline correspondente** usando a tool `read_file`:

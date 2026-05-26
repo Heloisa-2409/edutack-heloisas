@@ -1,12 +1,17 @@
 import streamlit as st
 import requests
-import os
+from utils.config import XANO_AUTH_URL, XANO_SUBJECTS_URL, XANO_TASKS_URL
 
-XANO_WORKSPACE_URL = os.getenv('XANO_WORKSPACE_URL', 'https://x8ki-letl-twmt.xano.io/api')
+def _base_url(endpoint: str) -> str:
+    if endpoint.startswith('/subjects'):
+        return XANO_SUBJECTS_URL
+    if endpoint.startswith('/academic_tasks'):
+        return XANO_TASKS_URL
+    return XANO_AUTH_URL
 
 def make_xano_request(endpoint, method='GET', data=None, headers=None):
     """Faz uma requisição para a API Xano com tratamento de erro aprimorado."""
-    url = f"{XANO_WORKSPACE_URL}{endpoint}"
+    url = f"{_base_url(endpoint)}{endpoint}"
     default_headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {st.session_state.get("auth_token", "")}'
@@ -33,16 +38,27 @@ def make_xano_request(endpoint, method='GET', data=None, headers=None):
         # Para respostas bem-sucedidas que não têm conteúdo (ex: DELETE)
         if response.status_code == 204:
             return {"status": "success"}
-        
-        return response.json()
+
+        result = response.json()
+        # Xano retorna listas paginadas como {"items": [...], ...}
+        if isinstance(result, dict) and 'items' in result:
+            return result['items']
+        return result
 
     except requests.exceptions.HTTPError as err:
         try:
             error_details = err.response.json()
-            st.error(f"Erro da API: {error_details.get('message', 'Resposta de erro sem mensagem.')}")
+            msg = error_details.get('message') or str(error_details)
+            st.error(f"Erro da API (código {err.response.status_code}): {msg}\n\nURL: {err.response.url}")
         except ValueError:
-            st.error(f"Erro na API (código {err.response.status_code}). A resposta não pôde ser decodificada.")
+            st.error(f"Erro na API (código {err.response.status_code}): {err.response.text}\n\nURL: {err.response.url}")
         return None
     except requests.exceptions.RequestException as e:
-        st.error(f"Erro de conexão: {e}")
+        if XANO_WORKSPACE_URL_IS_DEFAULT:
+            st.error(
+                f"Erro de conexão: {e}.\n"
+                "Verifique o arquivo .env e defina XANO_WORKSPACE_URL para o seu workspace Xano."
+            )
+        else:
+            st.error(f"Erro de conexão: {e}")
         return None

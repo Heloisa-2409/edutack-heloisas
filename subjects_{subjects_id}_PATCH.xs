@@ -16,6 +16,9 @@ query "subjects/{subjects_id}" verb=PATCH {
     text day_of_week? {
       description = "Novo dia da semana"
     }
+    int carga_horaria? {
+      description = "Nova carga horária semanal em horas"
+    }
   }
 
   stack {
@@ -38,7 +41,8 @@ query "subjects/{subjects_id}" verb=PATCH {
       data = {
         name: $input.name,
         professor: $input.professor,
-        day_of_week: $input.day_of_week
+        day_of_week: $input.day_of_week,
+        carga_horaria: $input.carga_horaria
       }
     } as $updated_subject
   }

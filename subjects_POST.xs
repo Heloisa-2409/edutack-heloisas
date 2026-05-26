@@ -13,6 +13,12 @@ query "subjects" verb=POST {
     text day_of_week {
       description = "Dia da semana da aula"
     }
+    int carga_horaria?=0 {
+      description = "Carga horária semanal em horas"
+    }
+    text semester? {
+      description = "Semestre ou período da disciplina"
+    }
   }
 
   stack {
@@ -21,6 +27,8 @@ query "subjects" verb=POST {
         name: $input.name,
         professor: $input.professor,
         day_of_week: $input.day_of_week,
+        carga_horaria: $input.carga_horaria,
+        semester: $input.semester,
         user_id: $auth.id,
         account_id: $auth.account_id
       }
