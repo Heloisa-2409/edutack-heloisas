@@ -51,9 +51,10 @@ st.markdown("""
     font-size: 0.78rem;
     font-weight: 600;
 }
-.badge-blue { background: #DBEAFE; color: #1D4ED8; }
-.badge-red  { background: #FEE2E2; color: #DC2626; }
-.badge-green{ background: #D1FAE5; color: #065F46; }
+.badge-blue   { background: #DBEAFE; color: #1D4ED8; }
+.badge-red    { background: #FEE2E2; color: #DC2626; }
+.badge-green  { background: #D1FAE5; color: #065F46; }
+.badge-gray   { background: #F3F4F6; color: #6B7280; }
 .divider { border: none; border-top: 1px solid #F3F4F6; margin: 1rem 0; }
 </style>
 """, unsafe_allow_html=True)
@@ -94,7 +95,6 @@ with tab_novo:
             if not nome or not professor:
                 st.error("⚠️ Por favor, preencha o nome da disciplina e o professor.")
             else:
-                # ── Verificação de duplicata ──────────────────────────────
                 existing = make_xano_request('/subjects') or []
                 is_duplicate = any(
                     s.get('name', '').strip().lower() == nome.strip().lower()
@@ -122,13 +122,12 @@ with tab_novo:
 # ABA: LISTAR DISCIPLINAS
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_lista:
-    # Buscar todas as disciplinas e tarefas
     subjects = make_xano_request('/subjects') or []
     tasks_all = make_xano_request('/academic_tasks') or []
 
     now = datetime.now()
 
-    # ── Construir set de subject_ids com tarefas atrasadas ──────────────────
+    # ── Identificar disciplinas com tarefas atrasadas ────────────────────────
     overdue_subject_ids = set()
     for t in tasks_all:
         if t.get('status') != 'completed' and t.get('due_date'):
@@ -137,15 +136,20 @@ with tab_lista:
                 if due < now:
                     overdue_subject_ids.add(t.get('subject_id'))
             except (ValueError, TypeError):
-                # Ignora tarefas com formato de data inválido
                 pass
 
+    # Separar ativas e arquivadas
+    active_subjects   = [s for s in subjects if not s.get('archived')]
+    archived_subjects = [s for s in subjects if s.get('archived') == True]
+
     # ── Barra de pesquisa e filtros ─────────────────────────────────────────
-    col_search, col_filter, col_refresh = st.columns([4, 2, 1])
+    col_search, col_filter, col_arch_filter, col_refresh = st.columns([3, 2, 2, 1])
     with col_search:
         search_term = st.text_input("🔍 Buscar disciplina", placeholder="Digite o nome da disciplina...")
     with col_filter:
         show_overdue_only = st.checkbox("⚠️ Apenas com tarefas em atraso")
+    with col_arch_filter:
+        show_archived = st.checkbox("📦 Incluir arquivadas")
     with col_refresh:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄", help="Recarregar lista"):
@@ -154,7 +158,7 @@ with tab_lista:
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     # ── Aplicar filtros ─────────────────────────────────────────────────────
-    filtered_subjects = subjects
+    filtered_subjects = subjects if show_archived else active_subjects
 
     if search_term:
         filtered_subjects = [
@@ -169,22 +173,23 @@ with tab_lista:
         ]
 
     # ── Métricas rápidas ────────────────────────────────────────────────────
-    c1, c2, c3 = st.columns(3)
-    c1.metric("📚 Total de Disciplinas", len(subjects))
-    c2.metric("⚠️ Com Tarefas em Atraso", len(overdue_subject_ids))
-    c3.metric("🔍 Resultados Filtrados", len(filtered_subjects))
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("📚 Disciplinas Ativas", len(active_subjects))
+    c2.metric("📦 Arquivadas", len(archived_subjects))
+    c3.metric("⚠️ Com Tarefas em Atraso", len(overdue_subject_ids))
+    c4.metric("🔍 Resultados Filtrados", len(filtered_subjects))
 
     # --- Botão de Exportação ---
     if filtered_subjects:
         st.markdown("---")
-        # Convert to DataFrame for easier CSV export
         df_subjects = pd.DataFrame(filtered_subjects)
-        col_map = {'name': 'Nome', 'professor': 'Professor', 'semester': 'Semestre', 'day_of_week': 'Dia da Semana', 'carga_horaria': 'Carga Horária (h/sem)'}
+        col_map = {
+            'name': 'Nome', 'professor': 'Professor', 'semester': 'Semestre',
+            'day_of_week': 'Dia da Semana', 'carga_horaria': 'Carga Horária (h/sem)'
+        }
         existing = [c for c in col_map if c in df_subjects.columns]
         df_export = df_subjects[existing].rename(columns=col_map)
-        
         csv = df_export.to_csv(index=False).encode('utf-8')
-        
         st.download_button(
            label="📥 Exportar Disciplinas para CSV",
            data=csv,
@@ -198,12 +203,18 @@ with tab_lista:
     if not filtered_subjects:
         if search_term or show_overdue_only:
             st.info("🔍 Nenhuma disciplina encontrada com os filtros aplicados.")
-        else:
+        elif show_archived:
             st.info("📭 Nenhuma disciplina cadastrada ainda. Use a aba **Nova Disciplina** para adicionar.")
+        else:
+            if archived_subjects:
+                st.info("📭 Nenhuma disciplina ativa. Marque **Incluir arquivadas** para ver as arquivadas.")
+            else:
+                st.info("📭 Nenhuma disciplina cadastrada ainda. Use a aba **Nova Disciplina** para adicionar.")
     else:
         for subject in filtered_subjects:
             subject_id = subject.get('id')
             has_overdue = subject_id in overdue_subject_ids
+            is_archived = subject.get('archived') == True
 
             # ── Card de exibição ──────────────────────────────────────────
             with st.container():
@@ -211,8 +222,16 @@ with tab_lista:
 
                 with col1:
                     name_display = subject.get('name', 'N/A')
-                    if has_overdue:
-                        st.markdown(f"**{name_display}** <span class='badge badge-red'>⚠️ Atrasada</span>", unsafe_allow_html=True)
+                    if is_archived:
+                        st.markdown(
+                            f"**{name_display}** <span class='badge badge-gray'>📦 Arquivada</span>",
+                            unsafe_allow_html=True
+                        )
+                    elif has_overdue:
+                        st.markdown(
+                            f"**{name_display}** <span class='badge badge-red'>⚠️ Atrasada</span>",
+                            unsafe_allow_html=True
+                        )
                     else:
                         st.markdown(f"**{name_display}**")
                     st.caption(f"👨‍🏫 {subject.get('professor', 'N/A')}  •  🗓️ {subject.get('semester', 'N/A')}")
@@ -225,18 +244,22 @@ with tab_lista:
                     st.write(f"⏱️ {carga}h" if carga and carga != '—' else "⏱️ —")
 
                 with col4:
-                    # Contar tarefas desta disciplina
                     subj_tasks = [t for t in tasks_all if t.get('subject_id') == subject_id]
                     done = len([t for t in subj_tasks if t.get('status') == 'completed'])
                     st.write(f"📝 {done}/{len(subj_tasks)}")
 
                 with col5:
-                    btn_col1, btn_col2 = st.columns(2)
+                    if not is_archived:
+                        btn_edit, btn_arch = st.columns(2)
+                        if btn_edit.button("✏️ Editar", key=f"edit_{subject_id}", use_container_width=True):
+                            st.session_state[f'editing_{subject_id}'] = True
+                        if btn_arch.button("📦 Arquivar", key=f"arch_{subject_id}", use_container_width=True):
+                            st.session_state[f'archiving_{subject_id}'] = True
+                    else:
+                        if st.button("↩️ Restaurar", key=f"restore_{subject_id}", use_container_width=True):
+                            st.session_state[f'restoring_{subject_id}'] = True
 
-                    if btn_col1.button("✏️ Editar", key=f"edit_{subject_id}", use_container_width=True):
-                        st.session_state[f'editing_{subject_id}'] = True
-
-                    if btn_col2.button("🗑️ Excluir", key=f"del_{subject_id}", use_container_width=True):
+                    if st.button("🗑️ Excluir", key=f"del_{subject_id}", use_container_width=True):
                         st.session_state[f'deleting_{subject_id}'] = True
 
                 # ── Formulário de Edição (inline) ──────────────────────────
@@ -288,6 +311,43 @@ with tab_lista:
                             if cancel_clicked:
                                 st.session_state.pop(f'editing_{subject_id}', None)
                                 st.rerun()
+
+                # ── Confirmação de Arquivamento ────────────────────────────
+                if st.session_state.get(f'archiving_{subject_id}'):
+                    with st.container():
+                        st.warning(
+                            f"📦 Arquivar **{subject.get('name')}**? "
+                            "Ela ficará oculta da lista principal e não contará nas métricas ativas."
+                        )
+                        ac1, ac2 = st.columns(2)
+                        if ac1.button("📦 Confirmar Arquivo", key=f"confirm_arch_{subject_id}", type="primary"):
+                            result = make_xano_request(f"/subjects/{subject_id}", method='PATCH', data={"archived": True})
+                            if result is not None:
+                                st.toast(f"📦 '{subject.get('name')}' arquivada.")
+                                st.session_state.pop(f'archiving_{subject_id}', None)
+                                st.rerun()
+                            else:
+                                st.error("❌ Falha ao arquivar. Verifique se o campo `archived` (boolean) existe na tabela `subjects` do Xano.")
+                        if ac2.button("✖ Cancelar", key=f"cancel_arch_{subject_id}"):
+                            st.session_state.pop(f'archiving_{subject_id}', None)
+                            st.rerun()
+
+                # ── Confirmação de Restauração ─────────────────────────────
+                if st.session_state.get(f'restoring_{subject_id}'):
+                    with st.container():
+                        st.info(f"↩️ Restaurar **{subject.get('name')}** para a lista ativa?")
+                        rc1, rc2 = st.columns(2)
+                        if rc1.button("↩️ Confirmar Restauração", key=f"confirm_rest_{subject_id}", type="primary"):
+                            result = make_xano_request(f"/subjects/{subject_id}", method='PATCH', data={"archived": False})
+                            if result is not None:
+                                st.toast(f"↩️ '{subject.get('name')}' restaurada.")
+                                st.session_state.pop(f'restoring_{subject_id}', None)
+                                st.rerun()
+                            else:
+                                st.error("❌ Falha ao restaurar.")
+                        if rc2.button("✖ Cancelar", key=f"cancel_rest_{subject_id}"):
+                            st.session_state.pop(f'restoring_{subject_id}', None)
+                            st.rerun()
 
                 # ── Confirmação de Exclusão (inline) ──────────────────────
                 if st.session_state.get(f'deleting_{subject_id}'):
