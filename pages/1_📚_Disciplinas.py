@@ -1,61 +1,29 @@
 import streamlit as st
 from utils.api import make_xano_request
+from utils.styles import apply_global_styles
 import pandas as pd
+import unicodedata
 from datetime import datetime
+from fpdf import FPDF
 
-# ── Configuração da página ──────────────────────────────────────────────────
 st.set_page_config(page_title="Disciplinas - EduTrack AI", page_icon="📚", layout="wide")
+apply_global_styles()
 # ── Auth Guard ──────────────────────────────────────────────────────────────
 if 'auth_token' not in st.session_state or not st.session_state.get('auth_token'):
-    st.warning("⚠️ Você precisa fazer o login para acessar esta página.")
-    st.stop()
+    st.switch_page("pages/0_🔐_Login.py")
 
 # ── Estilo Premium ──────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap');
-
-.main { font-family: 'Inter', sans-serif; }
-.page-header {
-    font-family: 'Outfit', sans-serif;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #1E3A8A;
-    margin-bottom: 0.25rem;
-}
-.page-sub {
-    color: #6B7280;
-    font-size: 0.95rem;
-    margin-bottom: 1.5rem;
-}
-.metric-card {
-    background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
-    border-left: 4px solid #3B82F6;
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 0.5rem;
-}
 .subject-card {
     background: white;
-    border: 1px solid #E5E7EB;
+    border: 1px solid #C5D8EC;
     border-radius: 12px;
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
     transition: box-shadow 0.2s;
 }
-.subject-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-.badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-}
-.badge-blue   { background: #DBEAFE; color: #1D4ED8; }
-.badge-red    { background: #FEE2E2; color: #DC2626; }
-.badge-green  { background: #D1FAE5; color: #065F46; }
-.badge-gray   { background: #F3F4F6; color: #6B7280; }
-.divider { border: none; border-top: 1px solid #F3F4F6; margin: 1rem 0; }
+.subject-card:hover { box-shadow: 0 4px 16px rgba(91,155,213,0.15); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -179,9 +147,50 @@ with tab_lista:
     c3.metric("⚠️ Com Tarefas em Atraso", len(overdue_subject_ids))
     c4.metric("🔍 Resultados Filtrados", len(filtered_subjects))
 
-    # --- Botão de Exportação ---
+    # --- Exportação ---
     if filtered_subjects:
         st.markdown("---")
+
+        def _strip(text):
+            if not isinstance(text, str):
+                return str(text) if text is not None else ''
+            return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+
+        def gerar_pdf_disciplinas(data):
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "EduTrack AI - Disciplinas", ln=1, align="C")
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(0, 6, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=1, align="C")
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(4)
+
+            col_w = [60, 45, 30, 25, 30]
+            headers = ["Nome", "Professor", "Semestre", "Dia", "Carga (h/sem)"]
+            pdf.set_fill_color(30, 58, 138)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 9)
+            for h, w in zip(headers, col_w):
+                pdf.cell(w, 8, h, border=1, fill=True)
+            pdf.ln()
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", "", 9)
+            for s in data:
+                row = [
+                    _strip(s.get('name', ''))[:35],
+                    _strip(s.get('professor', '') or '')[:25],
+                    _strip(s.get('semester', '') or '')[:15],
+                    _strip(s.get('day_of_week', '') or '')[:8],
+                    str(s.get('carga_horaria', '') or ''),
+                ]
+                for val, w in zip(row, col_w):
+                    pdf.cell(w, 7, val, border=1)
+                pdf.ln()
+            return bytes(pdf.output())
+
         df_subjects = pd.DataFrame(filtered_subjects)
         col_map = {
             'name': 'Nome', 'professor': 'Professor', 'semester': 'Semestre',
@@ -190,12 +199,26 @@ with tab_lista:
         existing = [c for c in col_map if c in df_subjects.columns]
         df_export = df_subjects[existing].rename(columns=col_map)
         csv = df_export.to_csv(index=False).encode('utf-8')
-        st.download_button(
-           label="📥 Exportar Disciplinas para CSV",
-           data=csv,
-           file_name='disciplinas_edutrack.csv',
-           mime='text/csv'
+
+        ex_col1, ex_col2 = st.columns(2)
+        ex_col1.download_button(
+            label="📥 Exportar CSV",
+            data=csv,
+            file_name='disciplinas_edutrack.csv',
+            mime='text/csv',
+            use_container_width=True
         )
+        try:
+            pdf_bytes = gerar_pdf_disciplinas(filtered_subjects)
+            ex_col2.download_button(
+                label="📄 Exportar PDF",
+                data=pdf_bytes,
+                file_name='disciplinas_edutrack.pdf',
+                mime='application/pdf',
+                use_container_width=True
+            )
+        except Exception as e:
+            ex_col2.error(f"Erro ao gerar PDF: {e}")
 
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
@@ -338,7 +361,10 @@ with tab_lista:
                         st.info(f"↩️ Restaurar **{subject.get('name')}** para a lista ativa?")
                         rc1, rc2 = st.columns(2)
                         if rc1.button("↩️ Confirmar Restauração", key=f"confirm_rest_{subject_id}", type="primary"):
-                            result = make_xano_request(f"/subjects/{subject_id}", method='PATCH', data={"archived": False})
+                            result = make_xano_request(f"/subjects/{subject_id}", method='PATCH', data={
+                                "archived": False,
+                                "name": subject.get('name', ''),
+                            })
                             if result is not None:
                                 st.toast(f"↩️ '{subject.get('name')}' restaurada.")
                                 st.session_state.pop(f'restoring_{subject_id}', None)

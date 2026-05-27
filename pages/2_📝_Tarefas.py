@@ -1,28 +1,21 @@
 import streamlit as st
 from datetime import datetime
+import unicodedata
 from utils.api import make_xano_request
+from utils.styles import apply_global_styles
 import pandas as pd
+from fpdf import FPDF
 
 # ── Configuração da página ──────────────────────────────────────────────────
 st.set_page_config(page_title="Tarefas - EduTrack AI", page_icon="📝", layout="wide")
-# ── Auth Guard ──────────────────────────────────────────────────────────────
+apply_global_styles()
 if 'auth_token' not in st.session_state or not st.session_state.get('auth_token'):
-    st.warning("⚠️ Você precisa fazer o login para acessar esta página.")
-    st.stop()
+    st.switch_page("pages/0_🔐_Login.py")
 
 # ── Estilo Premium ──────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap');
-.main { font-family: 'Inter', sans-serif; }
-.page-header { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.25rem; }
-.page-sub { color: #6B7280; font-size: 0.95rem; margin-bottom: 1.5rem; }
-.status-pending  { background: #FEF9C3; color: #854D0E; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
-.status-progress { background: #FED7AA; color: #9A3412; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
-.status-done     { background: #D1FAE5; color: #065F46; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
-.status-overdue  { background: #FEE2E2; color: #DC2626; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
-.group-header { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700; color: #1D4ED8; margin-top: 1rem; margin-bottom: 0.5rem; }
-.divider { border: none; border-top: 1px solid #F3F4F6; margin: 0.75rem 0; }
+.group-header { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; color: #2563A8; margin-top: 1rem; margin-bottom: 0.5rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -153,35 +146,94 @@ with tab_lista:
     mc3.metric("⏳ Pendentes", pend_c)
     mc4.metric("⚠️ Atrasadas", over_c)
 
-    # --- Botão de Exportação ---
+    # --- Exportação ---
     if filtered:
         st.markdown("---")
+
+        def _strip(text):
+            if not isinstance(text, str):
+                return str(text) if text is not None else ''
+            return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+
+        def gerar_pdf_tarefas(data, smap):
+            STATUS_PT = {"pending": "Pendente", "in_progress": "Em Andamento", "completed": "Concluida"}
+            PRIO_PT   = {"low": "Baixa", "medium": "Media", "high": "Alta"}
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "EduTrack AI - Tarefas", ln=1, align="C")
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(0, 6, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=1, align="C")
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(4)
+
+            col_w = [55, 38, 25, 32, 25, 15]
+            headers = ["Titulo", "Disciplina", "Prazo", "Status", "Prioridade", "Dias"]
+            pdf.set_fill_color(30, 58, 138)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 9)
+            for h, w in zip(headers, col_w):
+                pdf.cell(w, 8, h, border=1, fill=True)
+            pdf.ln()
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", "", 9)
+            for t in data:
+                due_str = ''
+                days_str = ''
+                if t.get('due_date'):
+                    try:
+                        d = datetime.fromisoformat(t['due_date'].split('T')[0])
+                        due_str = d.strftime('%d/%m/%Y')
+                        days_left = (d.date() - datetime.today().date()).days
+                        days_str = str(days_left)
+                    except Exception:
+                        due_str = t['due_date'][:10]
+                row = [
+                    _strip(t.get('title', ''))[:32],
+                    _strip(smap.get(t.get('subject_id'), ''))[:22],
+                    due_str,
+                    _strip(STATUS_PT.get(t.get('status', ''), t.get('status', '')))[:15],
+                    _strip(PRIO_PT.get(t.get('priority', 'medium'), 'Media')),
+                    days_str,
+                ]
+                for val, w in zip(row, col_w):
+                    pdf.cell(w, 7, val, border=1)
+                pdf.ln()
+            return bytes(pdf.output())
+
         df_tasks = pd.DataFrame(filtered)
-        
-        # Add subject name and format date
         df_tasks['disciplina'] = df_tasks['subject_id'].map(subjects_map).fillna('N/A')
-        # Handle potential errors in date conversion
         df_tasks['prazo'] = pd.to_datetime(df_tasks['due_date'], errors='coerce').dt.strftime('%d/%m/%Y')
-        
-        # Map status and priority to readable labels
         df_tasks['status_label'] = df_tasks['status'].map(lambda x: STATUS_LABELS.get(x, ('', x))[1])
         if 'priority' in df_tasks.columns:
             df_tasks['priority_label'] = df_tasks['priority'].map(lambda x: PRIORITY_LABELS.get(x, ('', x))[1])
         else:
             df_tasks['priority_label'] = 'N/A'
-
-        # Select and rename columns
         df_export = df_tasks[['title', 'disciplina', 'prazo', 'status_label', 'priority_label', 'description']]
         df_export.columns = ['Título', 'Disciplina', 'Prazo', 'Status', 'Prioridade', 'Descrição']
-
         csv = df_export.to_csv(index=False).encode('utf-8')
 
-        st.download_button(
-           label="📥 Exportar Tarefas para CSV",
-           data=csv,
-           file_name='tarefas_edutrack.csv',
-           mime='text/csv'
+        ex_col1, ex_col2 = st.columns(2)
+        ex_col1.download_button(
+            label="📥 Exportar CSV",
+            data=csv,
+            file_name='tarefas_edutrack.csv',
+            mime='text/csv',
+            use_container_width=True
         )
+        try:
+            pdf_bytes = gerar_pdf_tarefas(filtered, subjects_map)
+            ex_col2.download_button(
+                label="📄 Exportar PDF",
+                data=pdf_bytes,
+                file_name='tarefas_edutrack.pdf',
+                mime='application/pdf',
+                use_container_width=True
+            )
+        except Exception as e:
+            ex_col2.error(f"Erro ao gerar PDF: {e}")
 
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
@@ -266,9 +318,13 @@ with tab_lista:
                         # ── Concluir ─────────────────────────────────────
                         if task_status != 'completed':
                             if st.button("✅ Concluir", key=f"done_{task_id}", use_container_width=True):
-                                make_xano_request(f'/academic_tasks/{task_id}', method='PATCH', data={"status": "completed"})
-                                st.toast("✅ Tarefa marcada como concluída!")
-                                st.rerun()
+                                due_raw = task.get('due_date') or ''
+                                due_iso = due_raw[:10] if len(due_raw) >= 10 else datetime.today().date().isoformat()
+                                patch_data = {"status": "completed", "due_date": due_iso}
+                                result = make_xano_request(f'/academic_tasks/{task_id}', method='PATCH', data=patch_data)
+                                if result is not None:
+                                    st.toast("✅ Tarefa marcada como concluída!")
+                                    st.rerun()
 
                         # ── Editar (toggle) ───────────────────────────────
                         if st.button("✏️ Editar", key=f"edit_{task_id}", use_container_width=True):

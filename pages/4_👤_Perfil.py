@@ -1,38 +1,19 @@
 import streamlit as st
 from utils.api import make_xano_request
+from utils.styles import apply_global_styles
 from datetime import datetime
 
-# ── Configuração da página ──────────────────────────────────────────────────
 st.set_page_config(page_title="Perfil - EduTrack AI", page_icon="👤", layout="wide")
+apply_global_styles()
 # ── Auth Guard ──────────────────────────────────────────────────────────────
 if 'auth_token' not in st.session_state or not st.session_state.get('auth_token'):
-    st.warning("⚠️ Você precisa fazer o login para acessar esta página.")
-    st.stop()
+    st.switch_page("pages/0_🔐_Login.py")
 
 # ── Estilo Premium ──────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap');
-.main { font-family: 'Inter', sans-serif; }
-.page-header { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.25rem; }
-.page-sub { color: #6B7280; font-size: 0.95rem; margin-bottom: 1.5rem; }
-.profile-name { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; color: #111827; }
-.profile-email { color: #6B7280; font-size: 0.95rem; }
-.info-card {
-    background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
-    border-left: 4px solid #3B82F6;
-    border-radius: 10px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-}
-.progress-card {
-    background: linear-gradient(135deg, #F0FDF4, #D1FAE5);
-    border-left: 4px solid #10B981;
-    border-radius: 10px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-}
-.divider { border: none; border-top: 1px solid #F3F4F6; margin: 1rem 0; }
+.profile-name { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; color: #1A3A5C; }
+.profile-email { color: #5A7A9A; font-size: 0.95rem; }
 </style>
 """, unsafe_allow_html=True)
 
