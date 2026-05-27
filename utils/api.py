@@ -47,6 +47,11 @@ def make_xano_request(endpoint, method='GET', data=None, headers=None):
         return result
 
     except requests.exceptions.HTTPError as err:
+        if err.response.status_code == 401:
+            st.session_state.pop('auth_token', None)
+            st.session_state.pop('user', None)
+            st.warning("⏱️ Sessão expirada. Faça login novamente.")
+            st.switch_page("pages/0_🔐_Login.py")
         try:
             error_details = err.response.json()
             msg = error_details.get('message') or str(error_details)
