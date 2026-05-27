@@ -4,40 +4,90 @@ import unicodedata
 from datetime import datetime, date, timedelta
 from fpdf import FPDF
 from utils.api import make_xano_request
+from utils.styles import apply_global_styles
 
-# ── Configuração da página ──────────────────────────────────────────────────
 st.set_page_config(page_title="Relatórios - EduTrack AI", page_icon="📊", layout="wide")
+apply_global_styles()
 
 # ── Auth Guard ──────────────────────────────────────────────────────────────
 if 'auth_token' not in st.session_state or not st.session_state.get('auth_token'):
-    st.warning("⚠️ Você precisa fazer o login para acessar esta página.")
-    st.page_link("pages/0_🔐_Login.py", label="Ir para Login", icon="🔐")
-    st.stop()
-
-# ── Estilo Premium ──────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap');
-.main { font-family: 'Inter', sans-serif; }
-.page-header { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.25rem; }
-.page-sub { color: #6B7280; font-size: 0.95rem; margin-bottom: 1.5rem; }
-.section-header { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; color: #1D4ED8; margin-top: 2rem; margin-bottom: 1rem; }
-</style>
-""", unsafe_allow_html=True)
+    st.switch_page("pages/0_🔐_Login.py")
 
 # ── Cabeçalho ───────────────────────────────────────────────────────────────
-st.markdown('<h1 class="page-header">📊 Relatórios e Progresso</h1>', unsafe_allow_html=True)
-st.markdown('<p class="page-sub">Analise seu desempenho acadêmico e o progresso em cada disciplina.</p>', unsafe_allow_html=True)
+user_name = st.session_state.get('user', {}).get('name', 'Estudante').split()[0]
+now = datetime.now()
+hour = now.hour
+greeting = "Bom dia" if hour < 12 else ("Boa tarde" if hour < 18 else "Boa noite")
+
+st.markdown(f'<h1 class="page-header">🎓 {greeting}, {user_name}!</h1>', unsafe_allow_html=True)
+st.markdown('<p class="page-sub">Aqui está seu resumo acadêmico e relatórios de progresso.</p>', unsafe_allow_html=True)
 
 # ── Carregar Dados ──────────────────────────────────────────────────────────
-with st.spinner("Analisando seus dados..."):
+with st.spinner("Carregando seus dados..."):
     subjects = make_xano_request('/subjects') or []
     tasks = make_xano_request('/academic_tasks') or []
     subjects_map = {s['id']: s['name'] for s in subjects}
 
 if not subjects and not tasks:
-    st.info("📊 Não há dados suficientes para gerar relatórios. Comece cadastrando disciplinas e tarefas.")
+    st.markdown("""
+    <div style="text-align:center; padding:3rem 2rem; background:linear-gradient(135deg,#EFF6FF,#F0FDF4);
+                border-radius:16px; margin-top:1.5rem; border:1px solid #C5D8EC;">
+        <h2 style="font-family:'Outfit',sans-serif; color:#1A3A5C; font-size:1.6rem;">👋 Bem-vindo ao EduTrack AI!</h2>
+        <p style="color:#5A7A9A; font-size:1rem; margin-top:0.5rem;">
+            Você ainda não tem disciplinas ou tarefas cadastradas.<br>
+            Use o menu lateral para começar adicionando suas <strong>Disciplinas</strong> e depois suas <strong>Tarefas</strong>.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     st.stop()
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SEÇÃO: MÉTRICAS RÁPIDAS (DASHBOARD)
+# ══════════════════════════════════════════════════════════════════════════════
+active_subjects = [s for s in subjects if not s.get('archived')]
+total_tasks     = len(tasks)
+completed_tasks = [t for t in tasks if t.get('status') == 'completed']
+pending_tasks   = [t for t in tasks if t.get('status') == 'pending']
+progress_pct    = (len(completed_tasks) / total_tasks * 100) if total_tasks > 0 else 0
+
+def _safe_due(t):
+    try:
+        return datetime.fromisoformat(t['due_date'].split('T')[0])
+    except Exception:
+        return None
+
+overdue = [t for t in tasks if t.get('status') != 'completed' and _safe_due(t) and _safe_due(t) < now]
+upcoming = sorted(
+    [t for t in tasks if t.get('status') != 'completed' and _safe_due(t) and _safe_due(t) >= now],
+    key=lambda t: _safe_due(t)
+)[:5]
+
+mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+mc1.metric("📚 Disciplinas Ativas", len(active_subjects))
+mc2.metric("📋 Total Tarefas", total_tasks)
+mc3.metric("⏳ Pendentes", len(pending_tasks))
+mc4.metric("⚠️ Atrasadas", len(overdue), delta=f"-{len(overdue)}" if overdue else None, delta_color="inverse")
+mc5.metric("✅ Progresso", f"{progress_pct:.0f}%")
+
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+
+# ── Próximas tarefas ─────────────────────────────────────────────────────────
+if upcoming:
+    st.markdown('<h2 class="section-header">📅 Próximas Tarefas</h2>', unsafe_allow_html=True)
+    for t in upcoming:
+        due = _safe_due(t)
+        days_left = (due.date() - now.date()).days if due else 0
+        subj_name = subjects_map.get(t.get('subject_id'), 'N/A')
+        days_txt = "Vence hoje!" if days_left == 0 else (f"Amanhã" if days_left == 1 else f"{days_left} dias")
+        color = "#EF4444" if days_left == 0 else ("#F59E0B" if days_left <= 2 else "#5B9BD5")
+        st.markdown(f"""
+        <div style="background:#fff; border:1px solid #C5D8EC; border-left:4px solid {color};
+                    border-radius:10px; padding:0.7rem 1.1rem; margin-bottom:0.4rem;">
+            <strong>{t.get('title','')}</strong>
+            <span style="color:#5A7A9A; font-size:0.85rem;"> · 📚 {subj_name} · ⏰ {days_txt}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SEÇÃO: PROGRESSO POR DISCIPLINA
@@ -92,6 +142,7 @@ else:
 
     if start_date > end_date:
         st.error("A data de início não pode ser posterior à data de fim.")
+        st.stop()
     else:
         for task in tasks:
             if task.get('due_date'):
